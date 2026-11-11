@@ -124,99 +124,83 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
-
 # -----------------------------------------------------------------------------
 # CACHED DATA & MODEL LOADERS
 # -----------------------------------------------------------------------------
-@st.cache_resource
-def load_trained_model():
-    """Loads the serialized credit risk pipeline without retraining."""
-    model_path = os.path.join("Credit_Risk_Project", "models", "credit_risk_pipeline.pkl")
-    if not os.path.exists(model_path):
-        model_path = os.path.join("models", "credit_risk_pipeline.pkl")
-    with open(model_path, "rb") as f:
-        pipeline = pickle.load(f)
-    return pipeline
-
-@st.cache_data
-def load_model_metadata():
-    """Loads model metadata, coefficients, and calibration tables."""
-    meta_path = os.path.join("Credit_Risk_Project", "models", "model_metadata.json")
-    if not os.path.exists(meta_path):
-        meta_path = os.path.join("models", "model_metadata.json")
-    with open(meta_path, "r", encoding="utf-8") as f:
-        meta = json.load(f)
-    return meta
-
 @st.cache_data
 def load_dataset_sample():
-    """Loads resolved LendingClub observations for interactive charting, dropping missing rows."""
+    """Loads resolved LendingClub observations from accepted_sample.csv."""
     search_paths = [
-        os.path.join("Credit_Risk_Project", "data", "accepted_2007_to_2018Q4.parquet"),
-        os.path.join("data", "accepted_2007_to_2018Q4.parquet"),
-        os.path.join("Credit_Risk_Project", "data", "accepted_2007_to_2018Q4.pkl"),
-        os.path.join("data", "accepted_2007_to_2018Q4.pkl"),
-        os.path.join("Credit_Risk_Project", "data", "accepted_2007_to_2018Q4.csv.gz"),
-        os.path.join("data", "accepted_2007_to_2018Q4.csv.gz"),
-        os.path.join("Credit_Risk_Project", "data", "accepted_2007_2018Q4.csv"),
-        os.path.join("data", "accepted_2007_2018Q4.csv")
+        "accepted_sample.csv",
+        os.path.join("data", "accepted_sample.csv"),
+        os.path.join("data", "accepted_2007_to_2018Q4.csv")
     ]
-    data_path = None
-    for p in search_paths:
-        if os.path.exists(p):
-            data_path = p
-            break
-            
-    if data_path is None:
-        data_path = os.path.join("data", "accepted_2007_to_2018Q4.csv.gz")
+    data_path = next((p for p in search_paths if os.path.exists(p)), "accepted_sample.csv")
 
-    ext = os.path.splitext(data_path)[1].lower()
     candidate_cols = ["id", "member_id", "loan_status", "annual_inc", "dti", "fico_range_low", "loan_amnt"]
-
-    if ext == ".parquet":
-        df = pd.read_parquet(data_path, columns=candidate_cols)
-    elif ext in [".pkl", ".pickle"]:
-        df = pd.read_pickle(data_path)
-        df = df[[c for c in candidate_cols if c in df.columns]]
-    else:
-        compression = "gzip" if data_path.endswith(".gz") else None
-        header_sample = pd.read_csv(data_path, nrows=2, compression=compression)
-        cols = [c for c in candidate_cols if c in header_sample.columns]
-        df = pd.read_csv(data_path, usecols=cols, compression=compression, low_memory=False)
+    header_sample = pd.read_csv(data_path, nrows=2)
+    cols = [c for c in candidate_cols if c in header_sample.columns]
+    df = pd.read_csv(data_path, usecols=cols, low_memory=False)
     
-    # Standardize string status
     df["loan_status"] = df["loan_status"].astype(str).str.strip()
     mask_resolved = df["loan_status"].isin(["Fully Paid", "Charged Off", "Default"])
     df = df[mask_resolved].copy()
     
-    # Target: 0 = Fully Paid, 1 = Default
     df["target"] = df["loan_status"].apply(lambda s: 0 if s == "Fully Paid" else 1)
     df["target_label"] = df["target"].map({0: "Fully Paid (Safe)", 1: "Default (Charged Off)"})
     
-    # Convert numeric fields
     numeric_cols = ["annual_inc", "dti", "fico_range_low", "loan_amnt"]
     for col in numeric_cols:
         df[col] = pd.to_numeric(df[col], errors="coerce")
         
-    # Complete-case analysis: drop rows with missing values in required predictors
     df = df.dropna(subset=numeric_cols).copy()
-    
     df["annual_inc"] = df["annual_inc"].apply(lambda x: max(1000.0, float(x)))
     df["dti"] = df["dti"].clip(0.0, 45.0)
-    
-    # Feature engineering: Loan-to-Income (LTI)
     df["LTI"] = (df["loan_amnt"] / df["annual_inc"]).clip(0.0, 1.5)
-    
     return df
+
+@st.cache_resource
+def load_trained_model():
+    """Loads the pipeline or trains it automatically from accepted_sample.csv."""
+    for model_path in ["credit_risk_pipeline.pkl", os.path.join("models", "credit_risk_pipeline.pkl")]:
+        if os.path.exists(model_path):
+            with open(model_path, "rb") as f:
+                return pickle.load(f)
+
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import Pipeline
+
+    df = load_dataset_sample()
+    features = ["annual_inc", "dti", "fico_range_low", "loan_amnt", "LTI"]
+    X = df[features]
+    y = df["target"]
+
+    pipe = Pipeline([
+        ("scaler", StandardScaler()),
+        ("clf", LogisticRegression(class_weight="balanced", max_iter=1000, random_state=42))
+    ])
+    pipe.fit(X, y)
+    return pipe
+
+@st.cache_data
+def load_model_metadata():
+    """Loads model metadata, coefficients, and calibration tables."""
+    for meta_path in ["model_metadata.json", os.path.join("models", "model_metadata.json")]:
+        if os.path.exists(meta_path):
+            with open(meta_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+    raise FileNotFoundError("model_metadata.json not found.")
 
 # Initialize resources
 try:
+    df_resolved = load_dataset_sample()
     pipeline = load_trained_model()
     metadata = load_model_metadata()
-    df_resolved = load_dataset_sample()
 except Exception as e:
     st.error(f"Error loading project resources: {e}")
     st.stop()
+
 
 # -----------------------------------------------------------------------------
 # PERSISTENT INSTITUTIONAL SIDEBAR
