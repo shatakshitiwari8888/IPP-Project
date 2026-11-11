@@ -1,0 +1,144 @@
+{
+  "project_name": "Credit Risk and Loan Default Prediction",
+  "dataset_source": "LendingClub Accepted Loans 2007-2018Q4",
+  "model_type": "Multiple Logistic Regression (Scikit-Learn Equivalent)",
+  "class_weight": "balanced",
+  "features": [
+    "annual_inc",
+    "dti",
+    "fico_range_low",
+    "loan_amnt",
+    "LTI"
+  ],
+  "feature_stats": {
+    "annual_inc": {
+      "mean": 76363.4178,
+      "std": 40256.4591,
+      "beta": -0.2225,
+      "odds_ratio": 0.8005
+    },
+    "dti": {
+      "mean": 18.7391,
+      "std": 7.1154,
+      "beta": 0.3425,
+      "odds_ratio": 1.4084
+    },
+    "fico_range_low": {
+      "mean": 695.0291,
+      "std": 34.0127,
+      "beta": -0.4484,
+      "odds_ratio": 0.6386
+    },
+    "loan_amnt": {
+      "mean": 18195.2688,
+      "std": 10183.8441,
+      "beta": 0.0903,
+      "odds_ratio": 1.0945
+    },
+    "LTI": {
+      "mean": 0.299,
+      "std": 0.2425,
+      "beta": 0.3568,
+      "odds_ratio": 1.4288
+    }
+  },
+  "model_coefficients": {
+    "intercept": 0.0034,
+    "odds_ratio_intercept": 1.0034,
+    "betas": {
+      "annual_inc": -0.2225,
+      "dti": 0.3425,
+      "fico_range_low": -0.4484,
+      "loan_amnt": 0.0903,
+      "LTI": 0.3568
+    },
+    "odds_ratios": {
+      "annual_inc": 0.8005,
+      "dti": 1.4084,
+      "fico_range_low": 0.6386,
+      "loan_amnt": 1.0945,
+      "LTI": 1.4288
+    }
+  },
+  "preprocessing": {
+    "annual_inc_floor": 1000.0,
+    "annual_inc_995_clip": 324764.24,
+    "dti_median_impute": 18.67,
+    "dti_max_clip": 45.0,
+    "lti_formula": "loan_amnt / annual_inc",
+    "lti_max_clip": 1.5
+  },
+  "evaluation_metrics": {
+    "test_roc_auc": 0.693,
+    "optimal_threshold": 0.42,
+    "optimal_f1": 0.6849,
+    "default_cutoff_50": {
+      "accuracy": 0.651,
+      "precision": 0.6449,
+      "recall": 0.6508,
+      "f1": 0.6479,
+      "confusion_matrix": {
+        "tp": 287,
+        "fp": 158,
+        "tn": 295,
+        "fn": 154
+      }
+    }
+  },
+  "grade_calibration": [
+    {
+      "grade": "A",
+      "cutoff": "< 0.32",
+      "name": "Prime / Lowest Risk",
+      "count": 158,
+      "portfolio_share_pct": 17.7,
+      "avg_model_pd": 0.2432,
+      "observed_default_rate": 0.2722
+    },
+    {
+      "grade": "B",
+      "cutoff": "< 0.44",
+      "name": "Near Prime",
+      "count": 189,
+      "portfolio_share_pct": 21.1,
+      "avg_model_pd": 0.384,
+      "observed_default_rate": 0.3492
+    },
+    {
+      "grade": "C",
+      "cutoff": "< 0.54",
+      "name": "Moderate Risk",
+      "count": 194,
+      "portfolio_share_pct": 21.7,
+      "avg_model_pd": 0.4937,
+      "observed_default_rate": 0.4948
+    },
+    {
+      "grade": "D",
+      "cutoff": "< 0.64",
+      "name": "Elevated Risk",
+      "count": 154,
+      "portfolio_share_pct": 17.2,
+      "avg_model_pd": 0.5873,
+      "observed_default_rate": 0.5909
+    },
+    {
+      "grade": "E",
+      "cutoff": "< 0.74",
+      "name": "Subprime Risk",
+      "count": 119,
+      "portfolio_share_pct": 13.3,
+      "avg_model_pd": 0.6913,
+      "observed_default_rate": 0.7227
+    },
+    {
+      "grade": "F",
+      "cutoff": ">= 0.74",
+      "name": "Severe / Speculative",
+      "count": 80,
+      "portfolio_share_pct": 8.9,
+      "avg_model_pd": 0.8101,
+      "observed_default_rate": 0.7375
+    }
+  ]
+}
