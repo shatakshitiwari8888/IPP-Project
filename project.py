@@ -353,6 +353,8 @@ if selected_section == "Portfolio Overview":
         st.plotly_chart(fig_hist, use_container_width=True)
 
     # Key Portfolio Observations
+    default_exposure = (default_count * avg_loan) / 1e6
+
     st.markdown("""
         <div class="callout-box">
             <strong>Executive Portfolio Takeaways:</strong><br>
